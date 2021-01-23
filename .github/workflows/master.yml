@@ -1,0 +1,55 @@
+name: Terraform
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    strategy:
+      matrix:
+        directory: [staging, production]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v1
+      with:
+        terraform_version: ~0.14.0
+
+    - name: Terraform Format
+      run: terraform fmt -recursive -check
+
+    - name: Terraform Init
+      working-directory: ${{ matrix.directory }}
+      run: |
+        terraform init
+        terraform validate
+
+    - name: Terraform Plan
+      id: plan
+      if: github.event_name == 'pull_request'
+      working-directory: ${{ matrix.directory }}
+      run: terraform plan
+      continue-on-error: true
+
+    - name: Terraform Plan Status
+      if: steps.plan.outcome == 'failure'
+      run: exit 1
+
+    - name: Terraform Apply
+      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      working-directory: ${{ matrix.directory }}
+      run: terraform apply -auto-approve
