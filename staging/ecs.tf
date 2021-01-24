@@ -1,5 +1,5 @@
-module "ecs_edbase_prod" {
+module "ecs_edbase_stg" {
   source = "../modules/ecs"
-  name   = "edbase-prod"
+  name   = "edbase-stg"
   tags   = var.tags
 }
